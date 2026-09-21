@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plataforma Inteligente de Estudo - BioPrep</title>
+  <!-- Biblioteca Tesseract.js para leitura de imagem/foto do caderno (OCR) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    :root {
+      --primary: #1b5e20;
+      --primary-light: #2e7d32;
+      --accent: #81c784;
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #212121;
+      --text-muted: #616161;
+      --error: #c62828;
+      --success: #2e7d32;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+
+    .app-card { background: var(--card); width: 100%; max-width: 850px; padding: 35px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+    
+    .hero { text-align: center; margin-bottom: 25px; }
+    .hero h1 { color: var(--primary); font-size: 2rem; margin-bottom: 10px; }
+    .hero p { color: var(--text-muted); font-size: 1.05rem; line-height: 1.5; }
+
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin: 25px 0; }
+    .feature-item { background: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-light); }
+    .feature-item h3 { color: var(--primary-light); font-size: 1rem; margin-bottom: 5px; }
+    .feature-item p { font-size: 0.88rem; color: var(--text-muted); }
+
+    .form-group { margin-bottom: 15px; position: relative; }
+    label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; }
+    
+    /* Input com Botão de Mostrar/Ocultar Senha */
+    .password-container { position: relative; display: flex; align-items: center; }
+    .password-container input { width: 100%; padding-right: 45px; }
+    .toggle-password { position: absolute; right: 10px; background: none; border: none; cursor: pointer; font-size: 1.2rem; width: auto; margin: 0; padding: 5px; color: var(--text-muted); }
+
+    input[type="text"], input[type="password"], textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+    textarea { resize: vertical; min-height: 120px; }
+    
+    button { width: 100%; padding: 12px; background-color: var(--primary-light); color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+    button:hover { background-color: var(--primary); }
+    .btn-secondary { background-color: #616161; }
+    .btn-secondary:hover { background-color: #424242; }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .progress-box { background: #e0e0e0; border-radius: 20px; height: 22px; width: 100%; margin: 15px 0 25px 0; overflow: hidden; }
+    .progress-bar { background: var(--primary-light); height: 100%; width: 0%; transition: width 0.4s ease; text-align: center; color: white; font-size: 0.75rem; line-height: 22px; font-weight: bold; }
+
+    .module-card { background: #fafafa; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+    .module-card.completed { border-left: 6px solid var(--success); }
+    .btn-grid { display: grid; gap: 12px; margin-top: 15px; }
+    .feedback { font-weight: bold; text-align: center; margin-top: 15px; font-size: 0.95rem; }
+    .feedback.correct { color: var(--success); }
+    .feedback.wrong { color: var(--error); }
+    
+    .file-upload-box { border: 2px dashed #bbb; padding: 20px; text-align: center; border-radius: 8px; background: #fafafa; margin-bottom: 15px; }
+  </style>
+</head>
+<body>
+
+  <div class="app-card">
+
+    <!-- 1. PÁGINA DE APRESENTAÇÃO E BOAS-VINDAS -->
+    <div id="welcome-screen" class="screen active">
+      <div class="hero">
+        <h1>🌱 BioPrep - Plataforma Personalizada</h1>
+        <p>Estuda matérias integradas ou <strong>insere os teus próprios apontamentos e fotos de cadernos</strong> para gerar o teu plano do início ao fim!</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-item">
+          <h3>📸 Foto do Caderno (OCR)</h3>
+          <p>Digitaliza as fotos dos teus cadernos e transforma-as em texto estruturado de estudo.</p>
+        </div>
+        <div class="feature-item">
+          <h3>📚 Organização Automática</h3>
+          <p>O sistema pega em qualquer matéria e organiza-a em tópicos ordenados sequencialmente.</p>
+        </div>
+        <div class="feature-item">
+          <h3>📝 Provas e Preparações</h3>
+          <p>Testes gerados automaticamente para avaliação de conhecimentos.</p>
+        </div>
+      </div>
+
+      <button onclick="showScreen('auth-screen')">Aceder à Plataforma</button>
+    </div>
+
+    <!-- 2. PAINEL DE AUTENTICAÇÃO -->
+    <div id="auth-screen" class="screen">
+      <div class="hero">
+        <h2>Área de Acesso</h2>
+        <p>Cria a tua conta ou entra para salvares o teu progresso.</p>
+      </div>
+
+      <form id="auth-form">
+        <div class="form-group">
+          <label for="username">Nome de Utilizador:</label>
+          <input type="text" id="username" placeholder="Ex: Maria Santos" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Palavra-passe:</label>
+          <div class="password-container">
+            <input type="password" id="password" placeholder="Digita a tua palavra-passe" required>
+            <button type="button" class="toggle-password" onclick="togglePasswordVisibility('password', this)">👁️</button>
+          </div>
+        </div>
+        <button type="submit">Entrar / Criar Conta</button>
+      </form>
+      <div id="auth-msg" class="feedback"></div>
+      <button onclick="showScreen('welcome-screen')" class="btn-secondary">Voltar</button>
+    </div>
+
+    <!-- 3. PAINEL PRINCIPAL (DASHBOARD) -->
+    <div id="dashboard-screen" class="screen">
+      <div class="hero">
+        <h2 id="user-greeting">Olá, Estudante!</h2>
+        <p>Gere o teu programa de estudos e acompanha o avanço global.</p>
+      </div>
+
+      <p><strong>Avanço Geral do Programa:</strong></p>
+      <div class="progress-box">
+        <div id="overall-progress" class="progress-bar">0%</div>
+      </div>
+
+      <div class="btn-grid">
+        <button onclick="showScreen('modules-screen')">📖 1. Estudar Conteúdo Organizado</button>
+        <button onclick="showScreen('import-screen')">📥 2. Inserir Matéria / Foto do Caderno</button>
+        <button onclick="startExam()">📝 3. Fazer Prova / Teste de Avaliação</button>
+        <button onclick="showScreen('files-screen')">📁 4. Organizador de Ficheiros e Apontamentos</button>
+        <button onclick="changePassword()" class="btn-secondary">⚙️ Alterar Palavra-passe</button>
+        <button onclick="logout()" class="btn-secondary">🚪 Sair da Conta</button>
+      </div>
+    </div>
+
+    <!-- 4. INSERIR MATÉRIA / EXTRAIR FOTO (OCR) -->
+    <div id="import-screen" class="screen">
+      <h2>Inserir Conteúdo do Aluno</h2>
+      <p style="margin-bottom: 15px; color: var(--text-muted);">Cole um texto ou tire/carregue uma foto da página do seu caderno:</p>
+
+      <div class="file-upload-box">
+        <label for="ocr-file"><strong>📸 Tirar Foto ou Carregar Ficheiro de Imagem:</strong></label><br><br>
+        <input type="file" id="ocr-file" accept="image/*" onchange="processImageOCR(this)">
+        <p id="ocr-status" style="margin-top: 10px; font-weight: bold; color: var(--primary);"></p>
+      </div>
+
+      <div class="form-group">
+        <label for="custom-text"><strong>Texto / Apontamentos / Programa Completo:</strong></label>
+        <textarea id="custom-text" placeholder="Cole aqui o texto dos teus apontamentos ou tema que queres que o sistema organize do início ao fim..."></textarea>
+      </div>
+
+      <button onclick="processAndOrganizeCustomText()">Organizar Matéria do Início ao Fim</button>
+      <button onclick="showScreen('dashboard-screen')" class="btn-secondary">Voltar ao Painel</button>
+    </div>
+
+    <!-- 5. LISTA DE MÓDULOS DE ESTUDO -->
+    <div id="modules-screen" class="screen">
+      <h2>Conteúdo Sequencial (Do Início ao Fim)</h2>
+      <p style="margin-bottom: 20px; color: var(--text-muted);">Módulos estruturados para leitura e preparação prévia.</p>
+      
+      <div id="modules-list"></div>
+      <button onclick="showScreen('dashboard-screen')" class="btn-secondary">Voltar ao Painel</button>
+    </div>
+
+    <!-- 6. LEITURA DE MÓDULO -->
+    <div id="reading-screen" class="screen">
+      <h2 id="reading-title" style="color: var(--primary);"></h2>
+      <div id="reading-content" class="module-card" style="margin-top: 15px; line-height: 1.6; max-height: 300px; overflow-y: auto; background: #fff;"></div>
+      
+      <div style="margin-top: 20px;">
+        <h3>Pergunta de Consolidação</h3>
+        <p id="reading-question" style="margin: 10px 0; font-weight: 600;"></p>
+        <div id="reading-options" class="btn-grid"></div>
+        <div id="reading-feedback" class="feedback"></div>
+      </div>
+
+      <button id="finish-module-btn" onclick="completeModule()" style="display:none; margin-top:20px;">Concluir e Registar Módulo</button>
+      <button onclick="showScreen('modules-screen')" class="btn-secondary">Voltar aos Módulos</button>
+    </div>
+
+    <!-- 7. ORGANIZADOR DE FICHEIROS E APONTAMENTOS -->
+    <div id="files-screen" class="screen">
+      <h2>Organizador de Ficheiros e Apontamentos</h2>
+      <p style="margin-bottom: 15px; color: var(--text-muted);">Guarda anotações adicionais e ligações para cada módulo.</p>
+      
+      <div class="form-group">
+        <label for="note-title">Título dos Apontamentos:</label>
+        <input type="text" id="note-title" placeholder="Ex: Resumo de Biologia - Aula 3">
+      </div>
+      <div class="form-group">
+        <label for="note-content">Conteúdo da Anotação:</label>
+        <textarea id="note-content" placeholder="Escreve aqui os teus apontamentos..."></textarea>
+      </div>
+      <button onclick="saveNote()">Guardar Apontamento</button>
+
+      <h3 style="margin-top: 25px;">Apontamentos Guardados:</h3>
+      <div id="saved-notes-list" style="margin-top: 10px;"></div>
+
+      <button onclick="showScreen('dashboard-screen')" class="btn-secondary" style="margin-top: 15px;">Voltar ao Painel</button>
+    </div>
+
+    <!-- 8. PROVA / EXAME -->
+    <div id="exam-screen" class="screen">
+      <h3 id="exam-q-num" style="color: var(--primary);">Pergunta</h3>
+      <p id="exam-q-text" style="font-size: 1.1rem; margin: 20px 0; line-height: 1.5;"></p>
+      <div id="exam-options" class="btn-grid"></div>
+      <div id="exam-feedback" class="feedback"></div>
+      <button id="exam-next-btn" onclick="nextExamQuestion()" style="display:none; margin-top:20px;">Próxima Questão</button>
+    </div>
+
+    <!-- 9. RESULTADO DA PROVA -->
+    <div id="result-screen" class="screen">
+      <h2>Resultado do Teste de Avaliação</h2>
+      <p id="result-text" style="text-align: center; font-size: 1.2rem; margin: 25px 0;"></p>
+      <button onclick="showScreen('dashboard-screen')">Voltar ao Painel Principal</button>
+    </div>
+
+  </div>
+
+  <script>
+    // --- PROGRAMA INICIAL PADRÃO DE BIOLOGIA (11º ANO) ---
+    const PROGRAMA_PADRAO = [
+      {
+        id: 0,
+        titulo: "Módulo 1: Biodiversidade e Taxonomia",
+        teoria: "<b>[INÍCIO DO MÓDULO]</b><br><br>A biodiversidade compreende a variedade do mundo vivo. Carl Woese dividiu a vida em 3 Domínios: <i>Archaea</i>, <i>Bacteria</i> e <i>Eukarya</i>.<br><br><b>Nomenclatura Binomial:</b> Desenvolvida por Lineu, define que cada espécie tem um nome científico composto por dois termos em latim escritos em itálico (ex: <i>Homo sapiens</i>).<br><br><b>[FIM DO MÓDULO]</b>",
+        pergunta: "Segundo as regras da nomenclatura binomial, qual das opções apresenta a escrita correta?",
+        opcoes: ["Homo Sapiens", "Homo sapiens (em itálico)", "homo sapiens"],
+        resposta: 1
+      },
+      {
+        id: 1,
+        titulo: "Módulo 2: Transporte nas Plantas (Xilema e Floema)",
+        teoria: "<b>[INÍCIO DO MÓDULO]</b><br><br>O <b>Xilema</b> transporta a seiva bruta (água e sais minerais) da raiz para as folhas. O <b>Floema</b> transporta a seiva elaborada.<br><br>A subida da água é explicada pela <i>Hipótese da Coesão-Tensão-Adesão</i>, impulsionada pela transpiração foliar.<br><br><b>[FIM DO MÓDULO]</b>",
+        pergunta: "Qual é o principal motor da subida da seiva bruta no xilema?",
+        opcoes: ["Pressão da raiz", "Transpiração foliar", "Gravidade"],
+        resposta: 1
+      }
+    ];
+
+    // --- ESTADO DA APLICAÇÃO ---
+    let appData = JSON.parse(localStorage.getItem('bioprep_v2_data')) || {};
+    let currentUser = null;
+    let activeModuleId = null;
+    let examList = [];
+    let examIndex = 0;
+    let examScore = 0;
+
+    // --- MANIPULAÇÃO DE PALAVRA-PASSE (MOSTRAR / OCULTAR) ---
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === "password") {
+        input.type = "text";
+        btn.innerText = "🙈";
+      } else {
+        input.type = "password";
+        btn.innerText = "👁️";
+      }
+    }
+
+    // --- AUTENTICAÇÃO ---
+    document.getElementById('auth-form').addEventListener('submit', handleAuth);
+
+    function handleAuth(e) {
+      e.preventDefault();
+      const user = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value.trim();
+      const msg = document.getElementById('auth-msg');
+
+      if (!user || !pass) return;
+
+      if (!appData[user]) {
+        appData[user] = { 
+          password: pass, 
+          modulesDone: [], 
+          examScore: 0, 
+          customModules: [...PROGRAMA_PADRAO],
+          notes: [] 
+        };
+        saveData();
+        msg.className = "feedback correct";
+        msg.innerText = "Conta criada com sucesso!";
+      } else {
+        if (appData[user].password !== pass) {
+          msg.className = "feedback wrong";
+          msg.innerText = "Palavra-passe incorreta!";
+          return;
+        }
+      }
+
+      currentUser = user;
+      document.getElementById('user-greeting').innerText = `Bem-vindo(a), ${currentUser}!`;
+      updateProgress();
+      showScreen('dashboard-screen');
+    }
+
+    function saveData() {
+      localStorage.setItem('bioprep_v2_data', JSON.stringify(appData));
+    }
+
+    function updateProgress() {
+      const u = appData[currentUser];
+      const totalModules = u.customModules.length;
+      const completedModules = u.modulesDone.length;
+      
+      const moduleWeight = totalModules > 0 ? (completedModules / totalModules) * 70 : 0;
+      const examWeight = (u.examScore / 100) * 30;
+      const total = Math.round(moduleWeight + examWeight);
+
+      const bar = document.getElementById('overall-progress');
+      bar.style.width = total + '%';
+      bar.innerText = total + '% Concluído';
+    }
+
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+
+      if (screenId === 'modules-screen') renderModulesList();
+      if (screenId === 'files-screen') renderNotesList();
+    }
+
+    // --- PROCESSAR IMAGEM COM OCR (FOTO DO CADERNO) ---
+    function processImageOCR(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const status = document.getElementById('ocr-status');
+      status.innerText = "🔍 A ler o texto da foto do caderno... Por favor, aguarde.";
+
+      Tesseract.recognize(file, 'por', { logger: m => console.log(m) })
+        .then(({ data: { text } }) => {
+          status.innerText = "✅ Leitura concluída com sucesso!";
+          document.getElementById('custom-text').value += "\n" + text;
+        })
+        .catch(err => {
+          status.innerText = "❌ Erro ao ler a imagem. Tente carregar uma foto mais nítida.";
+          console.error(err);
+        });
+    }
+
+    // --- ORGANIZAR TEXTO PERSONALIZADO DO INÍCIO AO FIM ---
+    function processAndOrganizeCustomText() {
+      const text = document.getElementById('custom-text').value.trim();
+      if (!text) {
+        alert("Por favor, cole um texto ou leia uma imagem primeiro.");
+        return;
+      }
+
+      // Divide o texto em blocos/parágrafos para estruturar os módulos do início ao fim
+      const paragraphs = text.split('\n\n').filter(p => p.trim().length > 10);
+      let newModules = [];
+
+      paragraphs.forEach((para, idx) => {
+        newModules.push({
+          id: idx,
+          titulo: `Módulo ${idx + 1}: Tópico de Estudo (Parte ${idx + 1})`,
+          teoria: `<b>[INÍCIO DO MÓDULO ${idx + 1}]</b><br><br>${para.replace(/\n/g, '<br>')}<br><br><b>[FIM DO MÓDULO ${idx + 1}]</b>`,
+          pergunta: `Com base na leitura da Parte ${idx + 1}, compreendeu o conteúdo deste tópico?`,
+          opcoes: ["Sim, compreendi totalmente", "Preciso de rever este tópico", "Tenho dúvidas"],
+          resposta: 0
+        });
+      });
+
+      appData[currentUser].customModules = newModules;
+      appData[currentUser].modulesDone = []; // Reinicia o progresso para o novo conteúdo
+      saveData();
+      updateProgress();
+
+      alert(`A matéria foi processada e organizada em ${newModules.length} módulos do início ao fim!`);
+      showScreen('modules-screen');
+    }
+
+    // --- RENDERIZAR MÓDULOS ---
+    function renderModulesList() {
+      const container = document.getElementById('modules-list');
+      container.innerHTML = "";
+      const modules = appData[currentUser].customModules;
+      const doneList = appData[currentUser].modulesDone;
+
+      if (modules.length === 0) {
+        container.innerHTML = "<p>Nenhum conteúdo disponível. Vá a 'Inserir Matéria' para adicionar novos tópicos.</p>";
+        return;
+      }
+
+      modules.forEach(m => {
+        const isDone = doneList.includes(m.id);
+        const card = document.createElement('div');
+        card.className = `module-card ${isDone ? 'completed' : ''}`;
+        card.innerHTML = `
+          <h3>${m.titulo} ${isDone ? '✅' : ''}</h3>
+          <p style="font-size: 0.85rem; color: #666; margin: 5px 0 10px 0;">Estruturado sequencialmente do início ao fim.</p>
+          <button onclick="openModule(${m.id})">${isDone ? 'Revisitar Módulo' : 'Iniciar Estudo'}</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function openModule(id) {
+      activeModuleId = id;
+      const m = appData[currentUser].customModules.find(item => item.id === id);
+      document.getElementById('reading-title').innerText = m.titulo;
+      document.getElementById('reading-content').innerHTML = m.teoria;
+      document.getElementById('reading-question').innerText = m.pergunta;
+      document.getElementById('reading-feedback').innerText = "";
+      document.getElementById('finish-module-btn').style.display = "none";
+
+      const optsDiv = document.getElementById('reading-options');
+      optsDiv.innerHTML = "";
+
+      m.opcoes.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = opt;
+        btn.onclick = () => checkModuleAnswer(idx, m.resposta);
+        optsDiv.appendChild(btn);
+      });
+
+      showScreen('reading-screen');
+    }
+
+    function checkModuleAnswer(selected, correct) {
+      const fb = document.getElementById('reading-feedback');
+      if (selected === correct) {
+        fb.className = "feedback correct";
+        fb.innerText = "Resposta confirmada! Podes concluir este módulo.";
+        document.getElementById('finish-module-btn').style.display = "block";
+      } else {
+        fb.className = "feedback wrong";
+        fb.innerText = "Revê a matéria e tenta novamente.";
+      }
+    }
+
+    function completeModule() {
+      if (!appData[currentUser].modulesDone.includes(activeModuleId)) {
+        appData[currentUser].modulesDone.push(activeModuleId);
+        saveData();
+      }
+      updateProgress();
+      showScreen('modules-screen');
+    }
+
+    // --- APONTAMENTOS E FICHEIROS ---
+    function saveNote() {
+      const title = document.getElementById('note-title').value.trim();
+      const content = document.getElementById('note-content').value.trim();
+
+      if (!title || !content) {
+        alert("Preencha o título e o conteúdo dos apontamentos.");
+        return;
+      }
+
+      appData[currentUser].notes.push({ title, content, date: new Date().toLocaleDateString() });
+      saveData();
+      document.getElementById('note-title').value = "";
+      document.getElementById('note-content').value = "";
+      renderNotesList();
+    }
+
+    function renderNotesList() {
+      const container = document.getElementById('saved-notes-list');
+      container.innerHTML = "";
+      const notes = appData[currentUser].notes || [];
+
+      if (notes.length === 0) {
+        container.innerHTML = "<p style='color:#666;'>Sem apontamentos guardados.</p>";
+        return;
+      }
+
+      notes.forEach((n, idx) => {
+        const div = document.createElement('div');
+        div.className = 'module-card';
+        div.innerHTML = `<h4>${n.title} <small>(${n.date})</small></h4><p style='margin-top:5px;'>${n.content}</p>`;
+        container.appendChild(div);
+      });
+    }
+
+    // --- PROVA E AVALIAÇÃO ---
+    function startExam() {
+      const modules = appData[currentUser].customModules;
+      if (modules.length === 0) {
+        alert("Não existem matérias para gerar o teste.");
+        return;
+      }
+      examList = [...modules].sort(() => Math.random() - 0.5);
+      examIndex = 0;
+      examScore = 0;
+      showScreen('exam-screen');
+      loadExamQuestion();
+    }
+
+    function loadExamQuestion() {
+      const q = examList[examIndex];
+      document.getElementById('exam-q-num').innerText = `Questão ${examIndex + 1} de ${examList.length}`;
+      document.getElementById('exam-q-text').innerText = q.pergunta;
+      document.getElementById('exam-feedback').innerText = "";
+      document.getElementById('exam-next-btn').style.display = "none";
+
+      const optsDiv = document.getElementById('exam-options');
+      optsDiv.innerHTML = "";
+
+      q.opcoes.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = opt;
+        btn.onclick = () => checkExamAnswer(idx, q.resposta);
+        optsDiv.appendChild(btn);
+      });
+    }
+
+    function checkExamAnswer(selected, correct) {
+      const fb = document.getElementById('exam-feedback');
+      document.querySelectorAll('#exam-options button').forEach(b => b.disabled = true);
+
+      if (selected === correct) {
+        fb.className = "feedback correct";
+        fb.innerText = "Resposta Correta! 🎉";
+        examScore++;
+      } else {
+        fb.className = "feedback wrong";
+        fb.innerText = "Resposta Incorreta.";
+      }
+      document.getElementById('exam-next-btn').style.display = "block";
+    }
+
+    function nextExamQuestion() {
+      examIndex++;
+      if (examIndex < examList.length) {
+        loadExamQuestion();
+      } else {
+        const percentage = Math.round((examScore / examList.length) * 100);
+        appData[currentUser].examScore = percentage;
+        saveData();
+        updateProgress();
+
+        document.getElementById('result-text').innerHTML = `Pontuação obtida na Prova: <strong>${percentage}%</strong> (${examScore} de ${examList.length} corretas).`;
+        showScreen('result-screen');
+      }
+    }
+
+    function changePassword() {
+      const newPass = prompt("Introduz a nova palavra-passe:");
+      if (newPass && newPass.trim() !== "") {
+        appData[currentUser].password = newPass.trim();
+        saveData();
+        alert("Palavra-passe atualizada com sucesso!");
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      document.getElementById('auth-form').reset();
+      document.getElementById('auth-msg').innerText = "";
+      showScreen('welcome-screen');
+    }
+  </script>
+</body>
+</html>
